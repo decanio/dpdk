@@ -42,6 +42,7 @@
 #include <sys/queue.h>
 #include <errno.h>
 #include <netinet/ip.h>
+#include <pcap/pcap.h>
 
 #include <rte_common.h>
 #include <rte_memory.h>
@@ -270,12 +271,67 @@ process_packets(uint32_t port_num __rte_unused,
 		flush_rx_queue(i);
 }
 
+static pcap_t *pcap = NULL;
+char *pcap_filename;
+
+static void
+pcap_packet_callback(char *user, struct pcap_pkthdr *h, const u_char *pkt)
+{
+        static unsigned int pcap_cnt = 0;
+	unsigned pkt_len = h->caplen;
+	unsigned i;
+	struct rte_mbuf *m[1];
+	if (user == NULL) {
+
+		printf("Got a %u byte packet (pcap_cnt: %u)\n", pkt_len, ++pcap_cnt);
+		for(i = 0; i < pkt_len; i++) {
+			printf("%02X ", pkt[i]);
+			if ((i % 16) == 15)
+				printf("\n");
+		}
+		printf("\n");
+                m[0] = rte_pktmbuf_alloc(pktmbuf_pool);
+		if (m[0] != NULL) {
+			printf("got a pkmbuf = %p\n", m);
+			m[0]->data_len =
+			m[0]->pkt_len = pkt_len;
+                        u_char *p = rte_pktmbuf_mtod(m[0], u_char *);
+                        printf("p = %p\n", p);
+			fflush(stdout);
+			//memcpy(rte_pktmbuf_mtod(m, u_char *), pkt, pkt_len);
+			memcpy(p, pkt, pkt_len);
+#if 0
+			printf("freeing pktmbuf\n");
+			fflush(stdout);
+			rte_pktmbuf_free(m[0]);
+#else
+			printf("processing pktmbuf\n");
+			fflush(stdout);
+			process_packets(0, m, 1);
+			sleep(1);
+#endif
+		}
+	}
+}
+
 /*
  * Function called by the master lcore of the DPDK process.
  */
 static void
 do_packet_forwarding(void)
 {
+	if (pcap != NULL) {
+		int r;
+        	/* operating in pcap file mode */
+
+		printf("operating in pcap mode\n");
+
+		do {
+			r = pcap_dispatch(pcap, 1, (pcap_handler)pcap_packet_callback, NULL);
+		} while (r > 0);
+
+		return;
+        }
 	unsigned port_num = 0; /* indexes the port[] array */
 
 	for (;;) {
@@ -300,10 +356,19 @@ do_packet_forwarding(void)
 int
 main(int argc, char *argv[])
 {
+        char errbuf[PCAP_ERRBUF_SIZE];
+
 	/* initialise the system */
 	if (init(argc, argv) < 0 )
 		return -1;
 	RTE_LOG(INFO, APP, "Finished Process Init.\n");
+
+	printf("opening %s\n", pcap_filename);
+	pcap = pcap_open_offline(pcap_filename, errbuf);
+        if (pcap == NULL) {
+		printf("could not open pcap file\n");
+		return -1;
+	}
 
 	cl_rx_buf = calloc(num_clients, sizeof(cl_rx_buf[0]));
 

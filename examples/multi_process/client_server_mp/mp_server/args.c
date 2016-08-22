@@ -50,6 +50,8 @@ uint8_t num_clients;
 
 static const char *progname;
 
+extern char *pcap_filename;
+
 /**
  * Prints out usage information to stdout
  */
@@ -137,9 +139,13 @@ parse_app_args(uint8_t max_ports, int argc, char *argv[])
 	};
 	progname = argv[0];
 
-	while ((opt = getopt_long(argc, argvopt, "n:p:", lgopts,
+	while ((opt = getopt_long(argc, argvopt, "n:p:f:", lgopts,
 		&option_index)) != EOF){
+printf("opt '%c'\n", opt);
 		switch (opt){
+			case 'f':
+                                pcap_filename = optarg;
+				break;
 			case 'p':
 				if (parse_portmask(max_ports, optarg) != 0){
 					usage();
@@ -148,6 +154,7 @@ parse_app_args(uint8_t max_ports, int argc, char *argv[])
 				break;
 			case 'n':
 				if (parse_num_clients(optarg) != 0){
+printf("Error parsing num clients\n");
 					usage();
 					return -1;
 				}
@@ -159,14 +166,17 @@ parse_app_args(uint8_t max_ports, int argc, char *argv[])
 		}
 	}
 
-	if (ports->num_ports == 0 || num_clients == 0){
-		usage();
-		return -1;
-	}
+	printf("pcap filename: %s\n", pcap_filename);
+	if (pcap_filename == NULL) {
+		if (ports->num_ports == 0 || num_clients == 0){
+			usage();
+			return -1;
+		}
 
-	if (ports->num_ports % 2 != 0){
-		printf("ERROR: application requires an even number of ports to use\n");
-		return -1;
+		if (ports->num_ports % 2 != 0){
+			printf("ERROR: application requires an even number of ports to use\n");
+			return -1;
+		}
 	}
 	return 0;
 }

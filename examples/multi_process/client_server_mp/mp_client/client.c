@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <rte_common.h>
 #include <rte_malloc.h>
@@ -208,6 +209,7 @@ configure_output_ports(const struct port_info *ports)
 	}
 }
 
+#if 0
 /*
  * This function performs routing of packets
  * Just sends each input packet out an output port based solely on the input
@@ -226,6 +228,7 @@ handle_packet(struct rte_mbuf *buf)
 		tx_stats->tx[out_port] += sent;
 
 }
+#endif
 
 /*
  * Application main function - loops through
@@ -238,10 +241,14 @@ main(int argc, char *argv[])
 	struct rte_ring *rx_ring;
 	struct rte_mempool *mp;
 	struct port_info *ports;
+#if 0
 	int need_flush = 0; /* indicates whether we have unsent packets */
+#endif
 	int retval;
+#if 0
 	void *pkts[PKT_READ_SIZE];
 	uint16_t sent;
+#endif
 
 	if ((retval = rte_eal_init(argc, argv)) < 0)
 		return -1;
@@ -254,7 +261,9 @@ main(int argc, char *argv[])
 	if (rte_eth_dev_count() == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
-	rx_ring = rte_ring_lookup(get_rx_queue_name(client_id));
+	const char *s = get_rx_queue_name(client_id);
+	printf("rx_queue_name: \"%s\"\n", s);
+	rx_ring = rte_ring_lookup(s);
 	if (rx_ring == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get RX ring - is server process running?\n");
 
@@ -275,15 +284,48 @@ main(int argc, char *argv[])
 	printf("\nClient process %d handling packets\n", client_id);
 	printf("[Press Ctrl-C to quit ...]\n");
 
+	unsigned pcap_cnt = 0;
 	for (;;) {
-		uint16_t i, rx_pkts = PKT_READ_SIZE;
+#if 0
+		uint16_t rx_pkts = PKT_READ_SIZE;
+		uint16_t i;
 		uint8_t port;
+#endif
 
+                //void *msg;
+		unsigned i;
+                struct rte_mbuf *m;
+                if (rte_ring_dequeue(rx_ring, (void *)&m) < 0){
+                        usleep(5);
+                        continue;
+                }
+                printf("Got a %u byte packet (pcap_cnt: %u)\n", m->pkt_len, ++pcap_cnt);
+		u_char *pkt = rte_pktmbuf_mtod(m, u_char *);
+		for(i = 0; i < m->pkt_len; i++) {
+			printf("%02X ", pkt[i]);
+			if ((i % 16) == 15)
+				printf("\n");
+		}
+		printf("\n");
+
+                //rte_mempool_put(message_pool, msg);
+		printf("freeing pktmbuf\n");
+		fflush(stdout);
+		rte_pktmbuf_free(m);
+#if 0
+		rx_pkts = rte_ring_dequeue(rx_ring, pkts);
+
+		if (rx_pkts > 0) {
+			printf("Got %u packets\n", rx_pkts);
+		}
+#endif
+#if 0
 		/* try dequeuing max possible packets first, if that fails, get the
 		 * most we can. Loop body should only execute once, maximum */
 		while (rx_pkts > 0 &&
 				unlikely(rte_ring_dequeue_bulk(rx_ring, pkts, rx_pkts) != 0))
 			rx_pkts = (uint16_t)RTE_MIN(rte_ring_count(rx_ring), PKT_READ_SIZE);
+
 
 		if (unlikely(rx_pkts == 0)){
 			if (need_flush)
@@ -301,5 +343,6 @@ main(int argc, char *argv[])
 			handle_packet(pkts[i]);
 
 		need_flush = 1;
+#endif
 	}
 }
