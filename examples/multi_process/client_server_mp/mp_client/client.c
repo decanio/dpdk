@@ -239,6 +239,7 @@ main(int argc, char *argv[])
 {
 	const struct rte_memzone *mz;
 	struct rte_ring *rx_ring;
+	struct rte_ring *rtn_ring;
 	struct rte_mempool *mp;
 	struct port_info *ports;
 #if 0
@@ -266,6 +267,11 @@ main(int argc, char *argv[])
 	rx_ring = rte_ring_lookup(s);
 	if (rx_ring == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get RX ring - is server process running?\n");
+	s = get_rtn_queue_name(client_id);
+	printf("rtn_queue_name: \"%s\"\n", s);
+	rtn_ring = rte_ring_lookup(s);
+	if (rtn_ring == NULL)
+		rte_exit(EXIT_FAILURE, "Cannot get RTN ring - is server process running?\n");
 
 	mp = rte_mempool_lookup(PKTMBUF_POOL_NAME);
 	if (mp == NULL)
@@ -301,17 +307,27 @@ main(int argc, char *argv[])
                 }
                 printf("Got a %u byte packet (pcap_cnt: %u)\n", m->pkt_len, ++pcap_cnt);
 		u_char *pkt = rte_pktmbuf_mtod(m, u_char *);
-		for(i = 0; i < m->pkt_len; i++) {
-			printf("%02X ", pkt[i]);
-			if ((i % 16) == 15)
-				printf("\n");
+		if (m->pkt_len <= RTE_MBUF_DEFAULT_DATAROOM) {
+			for(i = 0; i < m->pkt_len; i++) {
+				printf("%02X ", pkt[i]);
+				if ((i % 16) == 15)
+					printf("\n");
+			}
+			printf("\n");
+		} else {
+		        rte_exit(EXIT_FAILURE, "got wacky rte_mbuf: %p len %u\n", m, m->pkt_len);
+			exit(-1);
 		}
-		printf("\n");
 
                 //rte_mempool_put(message_pool, msg);
+#if 0
 		printf("freeing pktmbuf\n");
 		fflush(stdout);
 		rte_pktmbuf_free(m);
+#endif
+		printf("returning pktmbuf\n");
+		fflush(stdout);
+		rte_ring_enqueue(rtn_ring, m);
 #if 0
 		rx_pkts = rte_ring_dequeue(rx_ring, pkts);
 

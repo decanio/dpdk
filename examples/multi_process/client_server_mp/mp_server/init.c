@@ -191,6 +191,15 @@ printf("client %u q_name \"%s\"\n", i, q_name);
 				RING_F_SP_ENQ | RING_F_SC_DEQ ); /* single prod, single cons */
 		if (clients[i].rx_q == NULL)
 			rte_exit(EXIT_FAILURE, "Cannot create rx ring queue for client %u\n", i);
+;
+		q_name = get_rtn_queue_name(i);
+printf("client %u q_name \"%s\"\n", i, q_name);
+		clients[i].rtn_q = rte_ring_create(q_name,
+				ringsize, socket_id,
+				RING_F_SP_ENQ | RING_F_SC_DEQ ); /* single prod, single cons */
+		if (clients[i].rx_q == NULL)
+			rte_exit(EXIT_FAILURE, "Cannot create rx ring queue for client %u\n", i);
+
 	}
 	return 0;
 }

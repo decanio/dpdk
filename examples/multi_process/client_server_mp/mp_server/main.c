@@ -67,11 +67,13 @@
 #include <rte_byteorder.h>
 #include <rte_malloc.h>
 #include <rte_string_fns.h>
+#include <rte_cycles.h>
 
 #include "common.h"
 #include "args.h"
 #include "init.h"
 
+#define min(a, b) (((a)<(b))?(a):(b))
 /*
  * When doing reads from the NIC or the client queues,
  * use this batch size
@@ -274,6 +276,8 @@ process_packets(uint32_t port_num __rte_unused,
 static pcap_t *pcap = NULL;
 char *pcap_filename;
 
+static long int r = 100;
+
 static void
 pcap_packet_callback(char *user, struct pcap_pkthdr *h, const u_char *pkt)
 {
@@ -294,12 +298,12 @@ pcap_packet_callback(char *user, struct pcap_pkthdr *h, const u_char *pkt)
 		if (m[0] != NULL) {
 			printf("got a pkmbuf = %p\n", m);
 			m[0]->data_len =
-			m[0]->pkt_len = pkt_len;
+			m[0]->pkt_len = min(pkt_len, RTE_MBUF_DEFAULT_DATAROOM);
                         u_char *p = rte_pktmbuf_mtod(m[0], u_char *);
                         printf("p = %p\n", p);
 			fflush(stdout);
 			//memcpy(rte_pktmbuf_mtod(m, u_char *), pkt, pkt_len);
-			memcpy(p, pkt, pkt_len);
+			memcpy(p, pkt, m[0]->pkt_len);
 #if 0
 			printf("freeing pktmbuf\n");
 			fflush(stdout);
@@ -308,7 +312,11 @@ pcap_packet_callback(char *user, struct pcap_pkthdr *h, const u_char *pkt)
 			printf("processing pktmbuf\n");
 			fflush(stdout);
 			process_packets(0, m, 1);
-			sleep(1);
+			rte_delay_us(random() % 10000 + 100);
+			if ((pcap_cnt % r) == 0) {
+				sleep(1);
+				//r = random() % 20;
+			}
 #endif
 		}
 	}
@@ -327,6 +335,14 @@ do_packet_forwarding(void)
 		printf("operating in pcap mode\n");
 
 		do {
+			struct client *cl;
+			struct rte_mbuf *m;
+			cl = &clients[0];
+			while(rte_ring_dequeue(cl->rtn_q, (void *)&m) >= 0) {
+				printf("Freeing returned rte_mbuf\n");
+				rte_pktmbuf_free(m);
+			}
+			printf("Done freeing rte_mbufs\n");
 			r = pcap_dispatch(pcap, 1, (pcap_handler)pcap_packet_callback, NULL);
 		} while (r > 0);
 
