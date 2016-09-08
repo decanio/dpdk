@@ -74,6 +74,7 @@
 #include <rte_common.h>
 #include <rte_version.h>
 #include <rte_atomic.h>
+#include <rte_ring.h>
 #include <malloc_heap.h>
 
 #include "eal_private.h"
@@ -742,6 +743,8 @@ rte_eal_init(int argc, char **argv)
 
 	if (!rte_atomic32_test_and_set(&run_once))
 		return -1;
+
+	rte_mempool_ctor_init();
 
 	logid = strrchr(argv[0], '/');
 	logid = strdup(logid ? logid + 1: argv[0]);

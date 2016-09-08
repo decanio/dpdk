@@ -1262,7 +1262,11 @@ rte_ring_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
 		return rte_ring_mc_dequeue_burst(r, obj_table, n);
 }
 
-void rte_suri_mempool_init(void);
+/**
+ * Initialize constructors if it didn't happen during C runtime startup
+ *
+ */
+void rte_mempool_ctor_init(void);
 
 #ifdef __cplusplus
 }

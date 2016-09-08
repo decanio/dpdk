@@ -155,8 +155,12 @@ static const struct rte_mempool_ops ops_sp_mc = {
 	.get_count = common_ring_get_count,
 };
 
-void rte_suri_mempool_init(void)
+void rte_mempool_ctor_init(void)
 {
+	/* TBD: only do this if it hasn't already happened during
+	 * the runtime startup.  I think there is a way to do this
+	 * but I can't find it at the moment.
+	 */
 	rte_mempool_register_ops(&ops_mp_mc);
 	rte_mempool_register_ops(&ops_sp_sc);
 	rte_mempool_register_ops(&ops_mp_sc);
