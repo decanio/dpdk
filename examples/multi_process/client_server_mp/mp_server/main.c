@@ -256,11 +256,12 @@ enqueue_rx_packet(uint8_t client, struct rte_mbuf *buf)
  * without checking any of the packet contents.
  */
 static void
-process_packets(uint32_t port_num __rte_unused,
+process_packets(uint32_t port_num,
 		struct rte_mbuf *pkts[], uint16_t rx_count)
 {
 	uint16_t i;
-	uint8_t client = 0;
+	//uint8_t client = 0;
+	uint8_t client = port_num;
 
 	for (i = 0; i < rx_count; i++) {
 		enqueue_rx_packet(client, pkts[i]);
@@ -285,6 +286,7 @@ pcap_packet_callback(char *user, struct pcap_pkthdr *h, const u_char *pkt)
 	unsigned pkt_len = h->caplen;
 	unsigned i;
 	struct rte_mbuf *m[1];
+	static int port_num = 0;
 	if (user == NULL) {
 
 		printf("Got a %u byte packet (pcap_cnt: %u)\n", pkt_len, ++pcap_cnt);
@@ -311,7 +313,13 @@ pcap_packet_callback(char *user, struct pcap_pkthdr *h, const u_char *pkt)
 #else
 			printf("processing pktmbuf\n");
 			fflush(stdout);
-			process_packets(0, m, 1);
+
+			/* move to next port */
+			//if (++port_num == ports->num_ports)
+			if (++port_num == 2)
+				port_num = 0;
+
+			process_packets(0/*port_num*/, m, 1);
 			rte_delay_us(random() % 10000 + 100);
 			if ((pcap_cnt % r) == 0) {
 				sleep(1);

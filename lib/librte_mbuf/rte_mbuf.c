@@ -177,7 +177,7 @@ rte_pktmbuf_pool_create(const char *name, unsigned n,
 	rte_errno = rte_mempool_set_ops_byname(mp,
 			RTE_MBUF_DEFAULT_MEMPOOL_OPS, NULL);
 	if (rte_errno != 0) {
-		RTE_LOG(ERR, MBUF, "error setting mempool handler\n");
+		RTE_LOG(ERR, MBUF, "error setting mempool handler: %d\n", rte_errno);
 		return NULL;
 	}
 	rte_pktmbuf_pool_init(mp, &mbp_priv);

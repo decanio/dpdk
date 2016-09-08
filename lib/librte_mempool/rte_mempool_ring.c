@@ -155,7 +155,16 @@ static const struct rte_mempool_ops ops_sp_mc = {
 	.get_count = common_ring_get_count,
 };
 
+void rte_suri_mempool_init(void)
+{
+	rte_mempool_register_ops(&ops_mp_mc);
+	rte_mempool_register_ops(&ops_sp_sc);
+	rte_mempool_register_ops(&ops_mp_sc);
+	rte_mempool_register_ops(&ops_sp_mc);
+}
+
 MEMPOOL_REGISTER_OPS(ops_mp_mc);
 MEMPOOL_REGISTER_OPS(ops_sp_sc);
 MEMPOOL_REGISTER_OPS(ops_mp_sc);
 MEMPOOL_REGISTER_OPS(ops_sp_mc);
+
